@@ -2,6 +2,15 @@
 
 This directory contains Ansible configuration files to connect to and configure a Windows server with a modular, maintainable approach.
 
+## System Information
+
+**Tested on:**
+- **Control Node**: Debian Linux 6.1.0-37-arm64 (aarch64 architecture)
+- **Hypervisor**: Parallels Desktop
+- **Target**: Windows Server 2025 Datacenter
+- **Ansible Version**: 2.5.0
+- **Python Version**: 3.13.5
+
 ## Files Description
 
 - `ansible.cfg`: Main Ansible configuration file with Windows-specific settings and fact caching
