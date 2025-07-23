@@ -56,46 +56,55 @@ ansible-playbook playbook.yml
 ```bash
 ansible-playbook plays/test-connection.yml
 ```
+Verifies connectivity to the Windows server and displays basic system information.
 
 #### Network Settings
 ```bash
 ansible-playbook plays/network-settings.yml
 ```
+Configures DNS servers, sets hostname, and enables ping through Windows Firewall.
 
 #### Configure RDP
 ```bash
 ansible-playbook plays/configure-rdp.yml
 ```
+Enables Remote Desktop Protocol with Network Level Authentication and configures firewall rules.
 
 #### Install Chocolatey
 ```bash
 ansible-playbook plays/install-chocolatey.yml
 ```
+Installs the Chocolatey package manager for Windows software management.
 
 #### Install Software
 ```bash
 ansible-playbook plays/install-software.yml
 ```
+Installs 7zip, Notepad++, and Firefox using Chocolatey package manager.
 
 #### Update Software
 ```bash
 ansible-playbook plays/update-software.yml
 ```
+Updates all installed Chocolatey packages to their latest versions.
 
 #### Update System (Security Updates Only)
 ```bash
 ansible-playbook plays/update-system.yml
 ```
+Installs Windows security updates and handles system reboots automatically.
 
 #### Basic Cleanup
 ```bash
 ansible-playbook plays/cleanup.yml
 ```
+Runs disk cleanup, removes temporary files, and cleans Windows Update cache.
 
 #### Domain Controller Setup
 ```bash
 ansible-playbook plays/domain-controller.yml
 ```
+Installs Active Directory Domain Services and promotes the server to Domain Controller.
 
 ### Ad-hoc Commands
 
