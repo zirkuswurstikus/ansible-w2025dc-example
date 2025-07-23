@@ -9,7 +9,7 @@ This directory contains Ansible configuration files to connect to and configure 
 **Tested on:**
 - **Host OS**: macOS (running Parallels Desktop Pro)
 - **Parallels Desktop Pro**: Version 20.4.0
-- **Control Node**: Debian Linux 6.1.0-37-arm64 (aarch64 architecture)
+- **Control Node**: Debian 12 Bookworm ARM64 (aarch64 architecture)
 - **Target**: Windows Server 2025 Datacenter
 - **Ansible Version**: 2.5.0
 - **Python Version**: 3.13.5
