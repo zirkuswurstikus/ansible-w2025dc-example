@@ -1,0 +1,25 @@
+---
+- name: Windows Services Management
+  hosts: windows_servers
+  gather_facts: yes
+  
+  tasks:
+    - name: Get running services
+      win_shell: |
+        Write-Host "=== Running Services ==="
+        Get-Service | Where-Object {$_.Status -eq "Running"} | Select-Object Name, DisplayName, Status | Format-Table -AutoSize
+      register: running_services
+      
+    - name: Display running services
+      debug:
+        var: running_services.stdout_lines
+        
+    - name: Get stopped services
+      win_shell: |
+        Write-Host "=== Stopped Services ==="
+        Get-Service | Where-Object {$_.Status -eq "Stopped"} | Select-Object Name, DisplayName, Status | Format-Table -AutoSize
+      register: stopped_services
+      
+    - name: Display stopped services
+      debug:
+        var: stopped_services.stdout_lines 

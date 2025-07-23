@@ -1,0 +1,125 @@
+---
+- name: Update Software Packages
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: Check Chocolatey availability
+      win_shell: |
+        if (Get-Command choco -ErrorAction SilentlyContinue) {
+          Write-Host "Chocolatey is available"
+          choco --version
+        } else {
+          Write-Host "Chocolatey is not available"
+          exit 1
+        }
+      register: choco_available
+      
+    - name: Display Chocolatey availability
+      debug:
+        var: choco_available.stdout_lines
+        
+    - name: Check for outdated packages
+      win_shell: |
+        Write-Host "Checking for outdated packages..."
+        choco outdated
+      register: outdated_check
+      when: choco_available.rc == 0
+      
+    - name: Display outdated packages
+      debug:
+        var: outdated_check.stdout_lines
+      when: outdated_check is defined
+        
+    - name: Update all packages
+      win_shell: |
+        Write-Host "Updating all packages..."
+        choco upgrade all -y
+        Write-Host "Package update completed"
+      register: update_all
+      when: choco_available.rc == 0
+      
+    - name: Display update results
+      debug:
+        var: update_all.stdout_lines
+      when: update_all is defined
+
+- name: Update Specific Packages (Optional)
+  hosts: windows_servers
+  gather_facts: no
+  
+  vars:
+    # Specific packages to update (if needed)
+    priority_packages:
+      - name: "git"
+        description: "Version control system"
+      - name: "python"
+        description: "Python programming language"
+      - name: "nodejs"
+        description: "JavaScript runtime"
+      - name: "vscode"
+        description: "Code editor"
+      - name: "googlechrome"
+        description: "Web browser"
+      - name: "firefox"
+        description: "Web browser"
+  
+  tasks:
+    - name: Update priority packages individually
+      win_shell: |
+        Write-Host "Updating priority packages..."
+        {% for package in priority_packages %}
+        Write-Host "Updating {{ package.name }} - {{ package.description }}"
+        choco upgrade {{ package.name }} -y
+        {% endfor %}
+        Write-Host "Priority packages update completed"
+      register: priority_update
+      when: choco_available.rc == 0
+      
+    - name: Display priority update results
+      debug:
+        var: priority_update.stdout_lines
+      when: priority_update is defined
+
+- name: Verify Software Updates
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: List updated packages
+      win_shell: |
+        Write-Host "Current package versions after update:"
+        choco list
+      register: updated_packages
+      
+    - name: Display updated packages
+      debug:
+        var: updated_packages.stdout_lines
+        
+    - name: Check for any remaining outdated packages
+      win_shell: |
+        Write-Host "Checking for any remaining outdated packages..."
+        choco outdated
+      register: final_outdated_check
+      
+    - name: Display final outdated check
+      debug:
+        var: final_outdated_check.stdout_lines
+        
+    - name: Update Summary
+      debug:
+        msg: |
+          Software Update Summary:
+          ========================
+          
+          Chocolatey Version: {{ choco_available.stdout_lines[1] if choco_available.stdout_lines | length > 1 else 'Unknown' }}
+          
+          {% if outdated_check is defined %}
+          Initial Outdated Packages: {{ outdated_check.stdout_lines | length - 1 }} packages
+          {% endif %}
+          
+          {% if final_outdated_check is defined %}
+          Remaining Outdated Packages: {{ final_outdated_check.stdout_lines | length - 1 }} packages
+          {% endif %}
+          
+          Update Status: {% if final_outdated_check is defined and final_outdated_check.stdout_lines | length <= 1 %}All packages up to date{% else %}Some packages may need manual attention{% endif %} 

@@ -1,0 +1,25 @@
+---
+- name: Gather Windows System Information
+  hosts: windows_servers
+  gather_facts: yes
+  
+  tasks:
+    - name: Get detailed system information
+      win_shell: |
+        Write-Host "=== System Information ==="
+        Write-Host "Computer Name: $env:COMPUTERNAME"
+        Write-Host "OS Version: $(Get-WmiObject -Class Win32_OperatingSystem | Select-Object -ExpandProperty Caption)"
+        Write-Host "OS Architecture: $(Get-WmiObject -Class Win32_OperatingSystem | Select-Object -ExpandProperty OSArchitecture)"
+        Write-Host "Total Physical Memory: $([math]::Round((Get-WmiObject -Class Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 2)) GB"
+        Write-Host "Available Memory: $([math]::Round((Get-WmiObject -Class Win32_OperatingSystem).FreePhysicalMemory / 1MB, 2)) GB"
+        Write-Host "Processor: $(Get-WmiObject -Class Win32_Processor | Select-Object -First 1 -ExpandProperty Name)"
+        Write-Host "Number of Processors: $(Get-WmiObject -Class Win32_Processor).Count"
+        Write-Host "Current User: $env:USERNAME"
+        Write-Host "Domain: $env:USERDOMAIN"
+        Write-Host "Current Directory: $(Get-Location)"
+        Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)"
+      register: detailed_system_info
+      
+    - name: Display detailed system information
+      debug:
+        var: detailed_system_info.stdout_lines 

@@ -1,0 +1,17 @@
+---
+- name: Test Windows Server Connection
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: Get system information
+      win_shell: |
+        Write-Host "Hostname: $env:COMPUTERNAME"
+        Write-Host "OS Version: $(Get-WmiObject -Class Win32_OperatingSystem | Select-Object -ExpandProperty Caption)"
+        Write-Host "Current User: $env:USERNAME"
+        Write-Host "Current Directory: $env:USERPROFILE"
+      register: system_info
+      
+    - name: Display system information
+      debug:
+        var: system_info.stdout_lines 

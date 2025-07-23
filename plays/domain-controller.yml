@@ -1,0 +1,39 @@
+---
+- name: Setup Domain Controller
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: Install Windows Features
+      ansible.windows.win_feature:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - AD-Domain-Services
+        - DNS
+        - GPMC
+      register: feature_install
+      
+    - name: Configure server as Domain Controller
+      win_shell: |
+        Write-Host "Installing Active Directory Domain Services..."
+        Import-Module ADDSDeployment
+        Install-ADDSForest `
+          -CreateDnsDelegation:$false `
+          -DatabasePath "C:\Windows\NTDS" `
+          -DomainMode "WinThreshold" `
+          -DomainName "{{ domain_name }}" `
+          -DomainNetbiosName "{{ domain_netbios }}" `
+          -ForestMode "WinThreshold" `
+          -InstallDns:$true `
+          -LogPath "C:\Windows\NTDS" `
+          -NoRebootOnCompletion:$false `
+          -SysvolPath "C:\Windows\SYSVOL" `
+          -SafeModeAdministratorPassword (ConvertTo-SecureString "{{ default_password }}" -AsPlainText -Force) `
+          -Force:$true
+      ignore_errors: yes
+      
+    - name: Wait for system to become available after AD installation
+      wait_for_connection:
+        timeout: 300
+      when: feature_install is changed 

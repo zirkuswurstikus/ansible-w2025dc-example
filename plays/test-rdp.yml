@@ -1,0 +1,68 @@
+---
+- name: Test RDP Configuration
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: Check RDP service status
+      win_shell: |
+        $rdpService = Get-Service -Name TermService -ErrorAction SilentlyContinue
+        if ($rdpService) {
+          Write-Host "RDP Service Status: $($rdpService.Status)"
+          Write-Host "RDP Service Start Type: $($rdpService.StartType)"
+        } else {
+          Write-Host "RDP Service not found"
+        }
+      register: rdp_service_status
+      
+    - name: Display RDP service status
+      debug:
+        var: rdp_service_status.stdout_lines
+        
+    - name: Check RDP registry settings
+      win_shell: |
+        $rdpEnabled = Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -ErrorAction SilentlyContinue
+        $nlaEnabled = Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -ErrorAction SilentlyContinue
+        
+        if ($rdpEnabled) {
+          Write-Host "RDP Enabled: $($rdpEnabled.fDenyTSConnections -eq 0)"
+        } else {
+          Write-Host "RDP Enabled: Unknown"
+        }
+        
+        if ($nlaEnabled) {
+          Write-Host "NLA Enabled: $($nlaEnabled.UserAuthentication -eq 1)"
+        } else {
+          Write-Host "NLA Enabled: Unknown"
+        }
+      register: rdp_registry_status
+      
+    - name: Display RDP registry status
+      debug:
+        var: rdp_registry_status.stdout_lines
+        
+    - name: Check RDP firewall rules
+      win_shell: |
+        $rdpRules = Get-NetFirewallRule -DisplayName "*Remote Desktop*" | Where-Object {$_.Enabled -eq "True"}
+        Write-Host "Active RDP Firewall Rules:"
+        foreach ($rule in $rdpRules) {
+          Write-Host "  - $($rule.DisplayName) ($($rule.Direction))"
+        }
+      register: rdp_firewall_status
+      
+    - name: Display RDP firewall status
+      debug:
+        var: rdp_firewall_status.stdout_lines
+
+- name: Test RDP port connectivity
+  hosts: localhost
+  gather_facts: false
+  
+  tasks:
+    - name: Test RDP port from Ansible host
+      shell: timeout 5 bash -c "</dev/tcp/{{ hostvars['devop']['ansible_host'] }}/3389" && echo "RDP port is open" || echo "RDP port is closed"
+      register: rdp_port_test
+      
+    - name: Display RDP port test result
+      debug:
+        var: rdp_port_test.stdout_lines 

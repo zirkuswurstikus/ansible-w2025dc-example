@@ -1,0 +1,134 @@
+---
+- name: Install Common Software Packages
+  hosts: windows_servers
+  gather_facts: no
+  
+  vars:
+    # Browser packages
+    browser_packages:
+      - name: "firefox"
+        description: "Mozilla Firefox web browser"
+        
+    # System utilities
+    system_packages:
+      - name: "7zip"
+        description: "File compression utility"
+      - name: "7zip.install"
+        description: "7-Zip with installer"
+        
+    # Text editors and tools
+    editor_packages:
+      - name: "notepadplusplus"
+        description: "Notepad++ text editor"
+      - name: "notepadplusplus.install"
+        description: "Notepad++ with installer"
+  
+  tasks:
+    - name: Check Chocolatey availability
+      win_shell: |
+        if (Get-Command choco -ErrorAction SilentlyContinue) {
+          Write-Host "Chocolatey is available"
+          choco --version
+        } else {
+          Write-Host "Chocolatey is not available"
+          exit 1
+        }
+      register: choco_available
+      
+    - name: Display Chocolatey availability
+      debug:
+        var: choco_available.stdout_lines
+        
+    - name: Install Browser Packages
+      win_shell: |
+        Write-Host "Installing browser packages..."
+        {% for package in browser_packages %}
+        Write-Host "Installing {{ package.name }} - {{ package.description }}"
+        choco install {{ package.name }} -y
+        {% endfor %}
+        Write-Host "Browser installation completed"
+      register: browser_install
+      when: choco_available.rc == 0
+      
+    - name: Display browser installation result
+      debug:
+        var: browser_install.stdout_lines
+      when: browser_install is defined
+        
+    - name: Install System Utilities
+      win_shell: |
+        Write-Host "Installing system utilities..."
+        {% for package in system_packages %}
+        Write-Host "Installing {{ package.name }} - {{ package.description }}"
+        choco install {{ package.name }} -y
+        {% endfor %}
+        Write-Host "System utilities installation completed"
+      register: system_install
+      when: choco_available.rc == 0
+      
+    - name: Display system utilities installation result
+      debug:
+        var: system_install.stdout_lines
+      when: system_install is defined
+        
+    - name: Install Text Editors
+      win_shell: |
+        Write-Host "Installing text editors..."
+        {% for package in editor_packages %}
+        Write-Host "Installing {{ package.name }} - {{ package.description }}"
+        choco install {{ package.name }} -y
+        {% endfor %}
+        Write-Host "Text editors installation completed"
+      register: editor_install
+      when: choco_available.rc == 0
+      
+    - name: Display text editors installation result
+      debug:
+        var: editor_install.stdout_lines
+      when: editor_install is defined
+
+- name: Verify Software Installation
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: List installed Chocolatey packages
+      win_shell: |
+        Write-Host "Installed Chocolatey packages:"
+        choco list
+      register: installed_packages
+      
+    - name: Display installed packages
+      debug:
+        var: installed_packages.stdout_lines
+        
+    - name: Check specific software versions
+      win_shell: |
+        Write-Host "Software versions:"
+        Write-Host "=================="
+        
+        # Check 7-Zip
+        if (Test-Path "C:\Program Files\7-Zip\7z.exe") {
+          Write-Host "7-Zip: Installed"
+        } else {
+          Write-Host "7-Zip: Not installed"
+        }
+        
+        # Check Notepad++
+        if (Test-Path "C:\Program Files\Notepad++\notepad++.exe") {
+          Write-Host "Notepad++: Installed"
+        } else {
+          Write-Host "Notepad++: Not installed"
+        }
+        
+        # Check Firefox
+        if (Test-Path "C:\Program Files\Mozilla Firefox\firefox.exe") {
+          Write-Host "Firefox: Installed"
+        } else {
+          Write-Host "Firefox: Not installed"
+        }
+      register: software_versions
+      
+    - name: Display software versions
+      debug:
+        var: software_versions.stdout_lines 

@@ -1,0 +1,29 @@
+---
+- name: Windows Basic Cleanup Tasks
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: Run Disk Cleanup (cleanmgr)
+      win_shell: |
+        cleanmgr /sagerun:1
+      async: 300
+      poll: 0
+      
+    - name: Clean temporary files and caches
+      win_shell: |
+        Remove-Item -Path "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "$env:WINDIR\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "$env:USERPROFILE\AppData\Local\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
+      ignore_errors: yes
+      
+    - name: Clean Windows Update cache
+      win_shell: |
+        Stop-Service -Name wuauserv -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "$env:WINDIR\SoftwareDistribution\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Start-Service -Name wuauserv -ErrorAction SilentlyContinue
+      ignore_errors: yes
+      
+    - name: Display cleanup results
+      debug:
+        msg: "Cleanup tasks completed" 

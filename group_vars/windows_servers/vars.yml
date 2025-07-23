@@ -1,0 +1,69 @@
+# Windows Server Configuration Variables
+
+# Default Password
+default_password: Pa55w.rd
+
+# Connection IP (where to connect to)
+connection_ip: 10.211.55.101
+
+# Network Configuration
+network_gateway: 10.211.55.1
+network_subnet: 24
+
+# Connection Settings
+ansible_user: Administrator
+ansible_password: "{{ default_password }}"
+ansible_connection: winrm
+ansible_winrm_transport: ntlm
+ansible_winrm_server_cert_validation: ignore
+ansible_winrm_port: 5985
+ansible_shell_type: powershell
+
+# Domain Controller Settings
+domain_name: acme.lab
+domain_netbios: ACME
+safe_mode_password: "{{ default_password }}"
+domain_admin_password: "{{ default_password }}"
+
+# Network Settings
+dns_servers:
+  - "{{ target_ip | default(ansible_host) }}"
+  - 8.8.8.8
+
+# Windows Features to Install
+windows_features:
+  - AD-Domain-Services
+  - DNS
+  - GPMC
+
+# Firewall Rules
+firewall_rules:
+  - name: "Allow ICMP Echo Request"
+    direction: "Inbound"
+    protocol: "ICMPv4"
+    icmp_type: 8
+    action: "Allow"
+  - name: "Allow ICMP Echo Reply"
+    direction: "Outbound"
+    protocol: "ICMPv4"
+    icmp_type: 0
+    action: "Allow"
+  - name: "Allow RDP TCP"
+    direction: "Inbound"
+    protocol: "TCP"
+    local_port: 3389
+    action: "Allow"
+  - name: "Allow RDP UDP"
+    direction: "Inbound"
+    protocol: "UDP"
+    local_port: 3389
+    action: "Allow"
+
+# Cleanup Settings
+cleanup_paths:
+  - "$env:TEMP"
+  - "C:\\Windows\\Temp"
+  - "C:\\Windows\\SoftwareDistribution"
+  - "$env:LOCALAPPDATA\\Google\\Chrome\\User Data\\Default\\Cache"
+  - "$env:LOCALAPPDATA\\Microsoft\\Edge\\User Data\\Default\\Cache"
+  - "$env:LOCALAPPDATA\\Mozilla\\Firefox\\Profiles" 

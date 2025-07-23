@@ -1,0 +1,73 @@
+---
+- name: Windows Network Settings
+  hosts: windows_servers
+  gather_facts: yes
+  
+  tasks:
+    - name: Get network adapter information
+      win_shell: |
+        Get-NetAdapter | Where-Object {$_.Status -eq "Up"} | Select-Object Name, InterfaceDescription, MacAddress
+      register: network_adapters
+      
+    - name: Display network adapters
+      debug:
+        var: network_adapters.stdout_lines
+        
+    - name: Configure DNS settings
+      win_shell: |
+        Write-Host "Configuring DNS settings..."
+        $adapter = Get-NetAdapter | Where-Object {$_.Status -eq "Up"} | Select-Object -First 1
+        if ($adapter) {
+          Write-Host "Configuring DNS for adapter: $($adapter.Name)"
+          Write-Host "Primary DNS: {{ target_ip | default(ansible_host) }}"
+          Write-Host "Secondary DNS: 8.8.8.8"
+          Set-DnsClientServerAddress -InterfaceAlias $adapter.Name -ServerAddresses "{{ target_ip | default(ansible_host) }}", "8.8.8.8"
+          Write-Host "DNS configuration completed"
+        } else {
+          Write-Host "No active network adapter found"
+        }
+      register: dns_config
+      
+    - name: Display DNS configuration result
+      debug:
+        var: dns_config.stdout_lines
+        
+    - name: Verify DNS configuration
+      win_shell: |
+        Get-DnsClientServerAddress | Where-Object {$_.InterfaceAlias -like "*Ethernet*"} | Select-Object InterfaceAlias, ServerAddresses
+      register: dns_verification
+      
+    - name: Display DNS verification
+      debug:
+        var: dns_verification.stdout_lines
+        
+    - name: Set hostname to {{ inventory_hostname }}
+      ansible.windows.win_hostname:
+        name: "{{ inventory_hostname }}"
+      
+    - name: Enable ping through Windows Firewall
+      win_shell: |
+        {% for rule in firewall_rules %}
+        {% if rule.protocol == 'ICMPv4' %}
+        New-NetFirewallRule -DisplayName "{{ rule.name }}" -Direction {{ rule.direction }} -Protocol {{ rule.protocol }} -IcmpType {{ rule.icmp_type }} -Action {{ rule.action }} -Enabled True
+        {% endif %}
+        {% endfor %}
+      ignore_errors: yes
+      
+    - name: Reboot to apply hostname change
+      ansible.windows.win_reboot:
+        reboot_timeout: 300
+      when: inventory_hostname != ansible_hostname
+
+- name: Test ping from Ansible host
+  hosts: localhost
+  gather_facts: false
+  
+  tasks:
+    - name: Ping Windows server from Ansible host
+      shell: ping -c 3 {{ hostvars['w2025dc']['target_ip'] | default(hostvars['w2025dc']['ansible_host']) }}
+      register: external_ping_test
+      
+    - name: Display external ping test result
+      debug:
+        var: external_ping_test.stdout_lines 

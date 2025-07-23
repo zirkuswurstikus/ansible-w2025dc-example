@@ -1,0 +1,12 @@
+# Host-specific variables for devop
+# This file can override inventory settings
+
+# Connection IP (where to connect to via WinRM)
+ansible_host: 10.211.55.101
+
+# Target IP (what IP to configure on the server)
+target_ip: 10.211.55.101
+
+# Override other settings if needed
+# ansible_user: Admin
+# ansible_password: DifferentPassword 

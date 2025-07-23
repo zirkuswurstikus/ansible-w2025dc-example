@@ -1,0 +1,30 @@
+---
+# Main Ansible Playbook for Windows Server Configuration
+# This playbook imports individual plays for modular configuration
+
+- name: Test Windows Server Connection
+  import_playbook: plays/test-connection.yml
+
+- name: Configure Network Settings
+  import_playbook: plays/network-settings.yml
+
+- name: Install System Updates
+  import_playbook: plays/update-system.yml
+  
+- name: Configure Remote Desktop Protocol
+  import_playbook: plays/configure-rdp.yml
+
+- name: Install Chocolatey Package Manager
+  import_playbook: plays/install-chocolatey.yml
+
+- name: Install Common Software
+  import_playbook: plays/install-software.yml
+
+- name: Update Software Packages
+  import_playbook: plays/update-software.yml
+
+- name: Perform System Cleanup
+  import_playbook: plays/cleanup.yml
+
+- name: Setup Domain Controller
+  import_playbook: plays/domain-controller.yml 

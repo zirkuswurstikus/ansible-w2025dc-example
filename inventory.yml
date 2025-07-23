@@ -1,0 +1,10 @@
+all:
+  children:
+    windows_servers:
+      hosts:
+        w2025dc:
+          ansible_host: 10.211.55.101  # Current working IP
+          target_ip: 10.211.55.101     # IP configured on the server
+        # Example: Alternative IP for the same server
+        # devop-alt:
+        #   ansible_host: 192.168.1.100 

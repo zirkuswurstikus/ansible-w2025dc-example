@@ -1,0 +1,91 @@
+---
+- name: Install Chocolatey Package Manager
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: Check if Chocolatey is already installed
+      win_shell: |
+        if (Get-Command choco -ErrorAction SilentlyContinue) {
+          Write-Host "Chocolatey is already installed"
+          choco --version
+        } else {
+          Write-Host "Chocolatey is not installed"
+        }
+      register: choco_check
+      
+    - name: Display Chocolatey check result
+      debug:
+        var: choco_check.stdout_lines
+        
+    - name: Install Chocolatey
+      win_shell: |
+        Write-Host "Installing Chocolatey package manager..."
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+        Write-Host "Chocolatey installation completed"
+      when: "'Chocolatey is not installed' in choco_check.stdout"
+      register: choco_install
+      
+    - name: Display Chocolatey installation result
+      debug:
+        var: choco_install.stdout_lines
+      when: choco_install is defined
+        
+    - name: Verify Chocolatey installation
+      win_shell: |
+        Write-Host "Verifying Chocolatey installation..."
+        choco --version
+        Write-Host "Chocolatey installation verified successfully"
+      register: choco_verify
+      
+    - name: Display Chocolatey verification
+      debug:
+        var: choco_verify.stdout_lines
+        
+    - name: Update Chocolatey to latest version
+      win_shell: |
+        Write-Host "Updating Chocolatey to latest version..."
+        choco upgrade chocolatey -y
+        Write-Host "Chocolatey update completed"
+      register: choco_update
+      
+    - name: Display Chocolatey update result
+      debug:
+        var: choco_update.stdout_lines
+
+- name: Configure Chocolatey Settings
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: Configure Chocolatey settings
+      win_shell: |
+        Write-Host "Configuring Chocolatey settings..."
+        
+        # Set Chocolatey to not prompt for confirmation
+        choco feature enable -n allowGlobalConfirmation
+        
+        # Set Chocolatey to not show progress bars (for automation)
+        choco feature enable -n showDownloadProgress
+        
+        # Configure Chocolatey to use HTTPS
+        choco config set https true
+        
+        Write-Host "Chocolatey configuration completed"
+      register: choco_config
+      
+    - name: Display Chocolatey configuration result
+      debug:
+        var: choco_config.stdout_lines
+        
+    - name: Show Chocolatey features
+      win_shell: |
+        Write-Host "Current Chocolatey features:"
+        choco feature list
+      register: choco_features
+      
+    - name: Display Chocolatey features
+      debug:
+        var: choco_features.stdout_lines 

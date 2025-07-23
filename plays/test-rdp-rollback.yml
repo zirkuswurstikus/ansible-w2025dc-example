@@ -1,0 +1,91 @@
+---
+- name: Test RDP Rollback Functionality
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: Test RDP Configuration with Intentional Failure
+      block:
+        - name: Enable Remote Desktop (This will succeed)
+          win_regedit:
+            path: HKLM:\System\CurrentControlSet\Control\Terminal Server
+            name: fDenyTSConnections
+            data: 0
+            type: dword
+          register: rdp_enable
+          
+        - name: Configure RDP for Network Level Authentication (This will succeed)
+          win_regedit:
+            path: HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp
+            name: UserAuthentication
+            data: 1
+            type: dword
+          register: rdp_nla
+          
+        - name: Intentional Failure Task (This will fail and trigger rollback)
+          win_shell: |
+            Write-Host "This task will intentionally fail to test rollback..."
+            exit 1
+          register: intentional_failure
+          
+        - name: This task should not run due to failure above
+          debug:
+            msg: "This task should not execute due to the intentional failure"
+            
+      rescue:
+        - name: Rollback Triggered - Reverting Changes
+          debug:
+            msg: "Rollback triggered due to intentional failure. Reverting RDP changes..."
+            
+        - name: Revert RDP Registry Settings
+          win_regedit:
+            path: HKLM:\System\CurrentControlSet\Control\Terminal Server
+            name: fDenyTSConnections
+            data: 1
+            type: dword
+          ignore_errors: yes
+          
+        - name: Revert NLA Registry Settings
+          win_regedit:
+            path: HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp
+            name: UserAuthentication
+            data: 0
+            type: dword
+          ignore_errors: yes
+          
+        - name: Rollback Complete
+          debug:
+            msg: "Rollback completed. RDP has been disabled."
+            
+      always:
+        - name: Test Status
+          debug:
+            msg: "RDP rollback test completed"
+
+- name: Verify Rollback Results
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: Check RDP Status After Rollback
+      win_shell: |
+        $rdpEnabled = Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -ErrorAction SilentlyContinue
+        $nlaEnabled = Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -ErrorAction SilentlyContinue
+        
+        Write-Host "After Rollback:"
+        if ($rdpEnabled) {
+          Write-Host "RDP Enabled: $($rdpEnabled.fDenyTSConnections -eq 0)"
+        } else {
+          Write-Host "RDP Enabled: Unknown"
+        }
+        
+        if ($nlaEnabled) {
+          Write-Host "NLA Enabled: $($nlaEnabled.UserAuthentication -eq 1)"
+        } else {
+          Write-Host "NLA Enabled: Unknown"
+        }
+      register: rollback_verification
+      
+    - name: Display Rollback Results
+      debug:
+        var: rollback_verification.stdout_lines 

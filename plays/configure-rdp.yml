@@ -1,0 +1,168 @@
+---
+- name: Configure Remote Desktop Protocol (RDP)
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: Configure RDP Settings
+      block:
+        - name: Enable Remote Desktop
+          win_regedit:
+            path: HKLM:\System\CurrentControlSet\Control\Terminal Server
+            name: fDenyTSConnections
+            data: 0
+            type: dword
+          register: rdp_enable
+          
+        - name: Configure RDP for Network Level Authentication
+          win_regedit:
+            path: HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp
+            name: UserAuthentication
+            data: 1
+            type: dword
+          register: rdp_nla
+          
+        - name: Enable RDP Firewall Rules
+          win_shell: |
+            Write-Host "Configuring RDP firewall rules..."
+            {% for rule in firewall_rules %}
+            {% if 'RDP' in rule.name %}
+            New-NetFirewallRule -DisplayName "{{ rule.name }}" -Direction {{ rule.direction }} -Protocol {{ rule.protocol }} -LocalPort {{ rule.local_port }} -Action {{ rule.action }} -Enabled True
+            Write-Host "Created firewall rule: {{ rule.name }}"
+            {% endif %}
+            {% endfor %}
+            Write-Host "RDP firewall configuration completed"
+          register: rdp_firewall
+          
+        - name: Display RDP configuration results
+          debug:
+            msg: |
+              RDP Configuration Summary:
+              - RDP Enabled: {{ rdp_enable.changed }}
+              - NLA Enabled: {{ rdp_nla.changed }}
+              - Firewall Rules: {{ rdp_firewall.changed }}
+              
+      rescue:
+        - name: RDP Configuration Failed - Starting Rollback
+          debug:
+            msg: "RDP configuration failed. Starting rollback process..."
+            
+        - name: Revert RDP Registry Settings
+          win_regedit:
+            path: HKLM:\System\CurrentControlSet\Control\Terminal Server
+            name: fDenyTSConnections
+            data: 1
+            type: dword
+          ignore_errors: yes
+          
+        - name: Revert NLA Registry Settings
+          win_regedit:
+            path: HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp
+            name: UserAuthentication
+            data: 0
+            type: dword
+          ignore_errors: yes
+          
+        - name: Remove RDP Firewall Rules
+          win_shell: |
+            Write-Host "Removing RDP firewall rules..."
+            {% for rule in firewall_rules %}
+            {% if 'RDP' in rule.name %}
+            Remove-NetFirewallRule -DisplayName "{{ rule.name }}" -ErrorAction SilentlyContinue
+            Write-Host "Removed firewall rule: {{ rule.name }}"
+            {% endif %}
+            {% endfor %}
+            Write-Host "RDP firewall rollback completed"
+          ignore_errors: yes
+          
+        - name: Rollback Complete
+          debug:
+            msg: "RDP configuration rollback completed. All changes have been reverted."
+            
+      always:
+        - name: RDP Configuration Status
+          debug:
+            msg: "RDP configuration task completed"
+
+- name: Verify RDP Configuration
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: Verify RDP Service Status
+      win_shell: |
+        $rdpService = Get-Service -Name TermService -ErrorAction SilentlyContinue
+        if ($rdpService) {
+          Write-Host "RDP Service Status: $($rdpService.Status)"
+          Write-Host "RDP Service Start Type: $($rdpService.StartType)"
+        } else {
+          Write-Host "RDP Service not found"
+        }
+      register: rdp_service_status
+      
+    - name: Display RDP service status
+      debug:
+        var: rdp_service_status.stdout_lines
+        
+    - name: Verify RDP Registry Settings
+      win_shell: |
+        $rdpEnabled = Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -ErrorAction SilentlyContinue
+        $nlaEnabled = Get-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" -Name "UserAuthentication" -ErrorAction SilentlyContinue
+        
+        if ($rdpEnabled) {
+          Write-Host "RDP Enabled: $($rdpEnabled.fDenyTSConnections -eq 0)"
+        } else {
+          Write-Host "RDP Enabled: Unknown"
+        }
+        
+        if ($nlaEnabled) {
+          Write-Host "NLA Enabled: $($nlaEnabled.UserAuthentication -eq 1)"
+        } else {
+          Write-Host "NLA Enabled: Unknown"
+        }
+      register: rdp_registry_status
+      
+    - name: Display RDP registry status
+      debug:
+        var: rdp_registry_status.stdout_lines
+        
+    - name: Verify RDP Firewall Rules
+      win_shell: |
+        $rdpRules = Get-NetFirewallRule -DisplayName "*Remote Desktop*" | Where-Object {$_.Enabled -eq "True"}
+        Write-Host "Active RDP Firewall Rules:"
+        foreach ($rule in $rdpRules) {
+          Write-Host "  - $($rule.DisplayName) ($($rule.Direction))"
+        }
+      register: rdp_firewall_status
+      
+    - name: Display RDP firewall status
+      debug:
+        var: rdp_firewall_status.stdout_lines
+
+- name: Test RDP Connectivity
+  hosts: localhost
+  gather_facts: false
+  
+  tasks:
+    - name: Test RDP port from Ansible host
+      shell: timeout 5 bash -c "</dev/tcp/{{ hostvars['w2025dc']['ansible_host'] }}/3389" && echo "RDP port is open" || echo "RDP port is closed"
+      register: rdp_port_test
+      
+    - name: Display RDP port test result
+      debug:
+        var: rdp_port_test.stdout_lines
+        
+    - name: RDP Connection Summary
+      debug:
+        msg: |
+          RDP Configuration Complete!
+          
+          Connection Details:
+          - Server: {{ hostvars['w2025dc']['ansible_host'] }}
+          - Port: 3389
+          - Protocol: RDP with NLA
+          - Status: {{ rdp_port_test.stdout_lines[0] }}
+          
+          You can now connect using any RDP client with:
+          - Username: Administrator
+          - Password: {{ hostvars['w2025dc']['default_password'] }} 

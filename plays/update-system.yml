@@ -1,0 +1,30 @@
+---
+- name: Windows System Updates
+  hosts: windows_servers
+  gather_facts: no
+  
+  tasks:
+    - name: Install security updates only
+      ansible.windows.win_updates:
+        category_names:
+          - SecurityUpdates
+        # category_names:
+        #   - Application
+        #   - Connectors
+        #   - CriticalUpdates
+        #   - DefinitionUpdates
+        #   - DeveloperKits
+        #   - FeaturePacks
+        #   - Guidance
+        #   - SecurityUpdates
+        #   - ServicePacks
+        #   - Tools
+        #   - Updates
+        #   - Upgrades
+      register: update_result
+      
+    - name: Wait for system to become available after reboot
+      ansible.windows.win_reboot:
+        reboot_timeout: 300
+      when: update_result.reboot_required
+      
