@@ -2,6 +2,8 @@
 
 This directory contains Ansible configuration files to connect to and configure a Windows server with a modular, maintainable approach.
 
+> **🤖 AI-Generated Code**: This project was created with the assistance of AI (Claude Sonnet 4) to demonstrate modern Ansible automation practices for Windows Server environments. The code has been tested and verified to work in real-world scenarios.
+
 ## System Information
 
 **Tested on:**
